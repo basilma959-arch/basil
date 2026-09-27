@@ -1,0 +1,10 @@
+{ calcOperator(e.key); e.preventDefault(); }
+  else if(e.key==='Enter' || e.key==='='){ calcEquals(); e.preventDefault(); }
+  else if(e.key==='Backspace'){ calcBackspace(); e.preventDefault(); }
+  else if(e.key==='Escape'){ closeCalculator(); e.preventDefault(); }
+  else if(e.key==='Delete'){ calcClear(); e.preventDefault(); }
+});
+
+</script>
+</body>
+</html>
