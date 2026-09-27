@@ -1,0 +1,51 @@
+name: Build AL BASIL APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rebuild AL BASIL interface
+        run: |
+          cat .source/index/part*.txt > app/src/main/assets/index.html
+          test -s app/src/main/assets/index.html
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build debug APK
+        run: gradle :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk AL_BASIL.apk
+
+      - name: Upload AL BASIL APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AL_BASIL_APK
+          path: AL_BASIL.apk
+          if-no-files-found: error
