@@ -1,0 +1,57 @@
+),countSearch=$('countSearch'),countingTable=$('countingTable');
+const sCounted=$('sCounted'),sShort=$('sShort'),sOver=$('sOver'),sActualValue=$('sActualValue'),sDiffValue=$('sDiffValue');
+const barcodeScan=$('barcodeScan'),scanQty=$('scanQty'),scanResult=$('scanResult'),cameraStatus=$('cameraStatus'),cameraVideo=$('cameraVideo'),cameraPlaceholder=$('cameraPlaceholder'),cameraBtn=$('cameraBtn');
+const dMat=$('dMat'),dBookValue=$('dBookValue'),dCounted=$('dCounted'),dDiffValue=$('dDiffValue'),progressBar=$('progressBar'),progressText=$('progressText'),dashTable=$('dashTable');
+const reportMeta=$('reportMeta'),reportContent=$('reportContent'),importBtn=$('importBtn'),importPreview=$('importPreview'),importStatus=$('importStatus'),importMode=$('importMode'),matchMode=$('matchMode'),installBtn=$('installBtn');
+function loadDB(){try{const x=JSON.parse(localStorage.getItem(DBKEY)||'null');if(x&&Array.isArray(x.materials)){x.counts=x.counts||[];x.seq=x.seq||1;x.current=x.current||{actual:{}};x.current.actual=x.current.actual||{};return x}}catch(e){}return emptyDB()}
+function saveDB(refresh=true){localStorage.setItem(DBKEY,JSON.stringify(db));if(refresh)refreshAll()}
+function uid(){return (crypto.randomUUID?crypto.randomUUID():'id_'+Date.now()+'_'+Math.random().toString(16).slice(2))}
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function num(v){const n=Number(String(v??'').replace(/,/g,'').trim());return Number.isFinite(n)?n:0}
+function fmt(v){return Number(v||0).toLocaleString('en-US',{maximumFractionDigits:3})}
+function money(v){return Number(v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function normalize(v){return String(v??'').trim().toLowerCase().replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ')}
+function download(name,content,type='text/plain;charset=utf-8'){if(window.AndroidBridge&&typeof window.AndroidBridge.saveTextFile==='function'){try{window.AndroidBridge.saveTextFile(name,String(content??''),type);return}catch(e){console.warn('Android save fallback',e)}}const b=new Blob([content],{type}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1200)}
+function toCSV(rows){return '\uFEFF'+rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n')}
+function getCurrentActual(id){return Object.prototype.hasOwnProperty.call(db.current.actual,id)?db.current.actual[id]:null}
+function setCurrentActual(id,val){if(val===null||val===''||!Number.isFinite(Number(val)))delete db.current.actual[id];else db.current.actual[id]=Number(val);localStorage.setItem(DBKEY,JSON.stringify(db))}
+function lastCount(){return db.counts.length?db.counts[db.counts.length-1]:null}
+
+document.getElementById('today').textContent=new Date().toLocaleString('ar-EG',{dateStyle:'full',timeStyle:'short'});
+document.getElementById('countDate').value=new Date().toISOString().slice(0,10);
+let countMethod='';
+function selectCountMethod(method){
+  countMethod=method;
+  ['manual','scan'].forEach(m=>{
+    const cap=m.charAt(0).toUpperCase()+m.slice(1);
+    const btn=document.getElementById('method'+cap+'Btn');
+    const panel=document.getElementById('countMode'+cap);
+    if(btn)btn.classList.toggle('active',m===method);
+    if(panel)panel.classList.toggle('active',m===method);
+  });
+  const summary=document.getElementById('countSummaryShell');
+  if(summary)summary.classList.add('active');
+  if(method==='manual'&&cameraRunning)stopCamera();
+  if(method==='manual')setTimeout(()=>document.getElementById('countSearch')?.focus(),60);
+  if(method==='scan'){syncPhoneScanQty();setTimeout(()=>document.getElementById('barcodeScan')?.focus(),60)}
+  renderCounting();
+  updateCountSummary();
+}
+function syncPhoneScanQty(){
+  const p=document.getElementById('phoneScanQty'),s=document.getElementById('scanQty');
+  if(p&&s)s.value=p.value||1;
+}
+function focusCurrentCountMethod(){
+  if(countMethod==='manual')document.getElementById('countSearch')?.focus();
+  else if(countMethod==='scan')document.getElementById('barcodeScan')?.focus();
+}
+document.querySelectorAll('.nav button[data-section]').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.nav button[data-section]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));document.getElementById(btn.dataset.section).classList.add('active');document.getElementById('pageTitle').textContent=btn.textContent.trim();if(btn.dataset.section!=='counting'&&cameraRunning)stopCamera();refreshAll();if(btn.dataset.section==='counting')setTimeout(()=>focusCurrentCountMethod(),80)}));
+
+function materialFromForm(){return {id:editingId||uid(),code:mCode.value.trim(),name:mName.value.trim(),barcode:mBarcode.value.trim(),group:mGroup.value.trim(),groupCode:mGroupCode.value.trim(),unit:mUnit.value.trim()||'وحدة',book:num(mBook.value),purchasePrice:num(mPurchase.value),conv2:num(mConv2.value)||1,conv3:num(mConv3.value)||1}}
+function saveMaterial(){const item=materialFromForm();if(!item.name){alert('أدخل اسم الصنف');return}if(editingId){const i=db.materials.findIndex(x=>x.id===editingId);if(i>=0)db.materials[i]=item}else db.materials.push(item);editingId=null;clearMaterialForm();saveDB()}
+function clearMaterialForm(){editingId=null;mCode.value='';mName.value='';mBarcode.value='';mGroup.value='';mGroupCode.value='';mUnit.value='وحدة';mBook.value=0;mPurchase.value=0;mConv2.value=1;mConv3.value=1}
+function editMaterial(id){const x=db.materials.find(m=>m.id===id);if(!x)return;editingId=id;mCode.value=x.code||'';mName.value=x.name||'';mBarcode.value=x.barcode||'';mGroup.value=x.group||'';mGroupCode.value=x.groupCode||'';mUnit.value=x.unit||'وحدة';mBook.value=x.book||0;mPurchase.value=x.purchasePrice||0;mConv2.value=x.conv2||1;mConv3.value=x.conv3||1;window.scrollTo({top:0,behavior:'smooth'})}
+function deleteMaterial(id){if(confirm('حذف هذه المادة؟')){db.materials=db.materials.filter(x=>x.id!==id);delete db.current.actual[id];saveDB()}}
+function renderMaterialGroupSuggestions(){const list=document.getElementById('materialGroupsList');if(!list)return;const groups=[...new Set(db.materials.map(x=>String(x.group||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ar'));list.innerHTML=groups.map(g=>`<option value="${esc(g)}"></option>`).join('')}
+function clearMaterialFilters(){const s=document.getElementById('materialSearch'),g=document.getElementById('materialGroupSearch');if(s)s.value='';if(g)g.value='';renderMaterials()}
+function renderMaterials(){renderMaterialGroupSuggestions();const q=normalize(materialSearch.value);const groupInput=document.getElementById('materialGroupSearch');const gq=normalize(groupInput?groupInput.value:'');const rows=db.materials.filter(x=>(!q||normalize([x.name,x.code,x.barcode].join(' ')).includes(q))&&(!gq||normalize(x.group).includes(gq)||normalize(x.groupCode).includes(gq)));materialsInfo.textContent=`${fmt(rows.length)} من ${fmt(db.materials.length)} مادة${gq?' • المجموعة: '+(groupInput.value||''):''}`;if(!rows.length){materialsTable.innerHTML='<div class="empty">لا توجد أصناف مطابقة للبحث أو المجموعة المحددة.</div>';return}materialsTable.innerHTML=`<div class="table-wrap"><table><thead><tr><th>#</th><th>رمز الصنف</th><th>اسم الصنف</th><th>الباركود</th><th>المجموعة</th><th>الوحدة</th><th class="num">الكمية</th><th class="num">آخر شراء</th><th class="num">قيمة الدفتري</th><th>إجراء</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.code)}</td><td><b>${esc(x.name)}</b></td><td class="mono">${esc(x.barcode||'—')}</td><td>${esc(x.group)}</td><td>${esc(x.unit)}</td><td class="num">${fmt(x.book)}</td><td class="num">${money(x.purchasePrice)}</td><td class="num">${money(x.book*x.purchasePrice)}</td><td><button class="btn light" onclick="edi
