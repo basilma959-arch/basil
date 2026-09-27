@@ -1,0 +1,94 @@
+h2 style="font-size:17px">الجرد اليدوي</h2><div class="hint">ابحث بالاسم أو الكود أو الباركود ثم أدخل الكمية الفعلية.</div></div></div>
+          <div class="search"><input id="countSearch" placeholder="ابحث عن مادة..." oninput="renderCounting()"></div>
+        </div>
+        <div id="countingTable"></div>
+      </div>
+    </div>
+
+    <div id="countModeScan" class="count-mode-panel">
+      <div class="card count-mode-card barcode-mode">
+        <div class="section-head"><div class="count-mode-heading"><span class="round-icon">▥</span><div><h2 style="font-size:17px">الجرد بالباركود / الموبايل</h2><div class="hint">يمكنك استخدام قارئ USB/Bluetooth وكاميرا الهاتف في نفس جلسة الجرد والتبديل بينهما دون فقد الكميات.</div></div></div></div>
+        <div class="scan-panel">
+          <div class="scan-row"><div style="flex:1"><label class="hint">امسح / اكتب الباركود ثم Enter</label><input class="scan-input mono" id="barcodeScan" placeholder="Barcode" autocomplete="off"></div><div class="field"><label>الكمية لكل مسح</label><input class="scan-qty" id="scanQty" type="number" min="0.001" step="0.001" value="1"></div><button class="btn primary" onclick="processBarcodeInput()">إضافة</button></div>
+          <div class="scan-result" id="scanResult">جاهز للمسح.</div>
+        </div>
+      </div>
+
+      <div class="card count-mode-card phone-mode" id="cameraScanner" style="margin-top:13px">
+        <div class="section-head"><div class="count-mode-heading"><span class="round-icon">▣</span><div><h2 style="font-size:17px">كاميرا الموبايل</h2><div class="hint">شغّل الكاميرا الخلفية لمسح نفس باركود الأصناف وإضافته مباشرة إلى الجرد الحالي.</div></div></div><div class="toolbar"><button class="btn primary" id="cameraBtn" onclick="toggleCamera()">تشغيل الكاميرا</button></div></div>
+        <div class="field" style="max-width:180px;margin-bottom:10px"><label>الكمية لكل قراءة بالكاميرا</label><input class="scan-qty" id="phoneScanQty" type="number" min="0.001" step="0.001" value="1" oninput="syncPhoneScanQty()"></div>
+        <div class="camera-box" id="cameraBox"><div class="camera-placeholder" id="cameraPlaceholder">الكاميرا متوقفة<br><small>تعمل عبر HTTPS / localhost أو داخل التطبيق بعد التغليف.</small></div><video id="cameraVideo" playsinline muted class="hidden"></video></div>
+        <div class="hint" id="cameraStatus" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+    <div id="countSummaryShell" class="count-summary-shell">
+      <div class="card">
+        <div class="section-head"><div><h2 style="font-size:16px">ملخص الجرد الحالي</h2><div class="hint">يتحدث تلقائيًا مهما كانت طريقة الجرد المستخدمة.</div></div></div>
+        <div class="count-summary"><div class="sum"><span>تم جردها</span><b id="sCounted">0</b></div><div class="sum"><span>إجمالي العجز</span><b id="sShort">0</b></div><div class="sum"><span>إجمالي الزيادة</span><b id="sOver">0</b></div><div class="sum"><span>قيمة الفعلي</span><b id="sActualValue">0.00</b></div><div class="sum"><span>صافي فرق القيمة</span><b id="sDiffValue">0.00</b></div></div>
+      </div>
+    </div>
+  </section>
+
+    <section id="reports" class="section">
+    <div class="section-head"><div><h2>تقرير آخر جرد</h2><div class="hint" id="reportMeta"></div></div><div class="toolbar"><button class="btn light" onclick="window.print()">طباعة</button><button class="btn good" onclick="exportLastCount()">تصدير CSV</button></div></div>
+    <div id="reportContent"></div>
+  </section>
+
+  <section id="settings" class="section">
+    <div class="section-head"><div><h2>الإعدادات والتطبيق</h2><div class="hint">هذه النسخة Mobile-first ومجهزة كتطبيق PWA قابل للتثبيت على الهاتف والكمبيوتر. البيانات محفوظة محليًا على الجهاز.</div></div></div>
+    <div class="grid3">
+      <div class="card"><h3>تثبيت كتطبيق</h3><p class="hint">عند نشر النسخة عبر HTTPS سيظهر زر تثبيت AL BASIL كتطبيق مستقل على الأجهزة المدعومة.</p><button class="btn primary" id="installBtn" disabled onclick="installApp()">تثبيت AL BASIL</button></div>
+      <div class="card"><h3>استعادة نسخة احتياطية</h3><p class="hint">استعد ملف JSON سبق تصديره من البرنامج.</p><button class="btn light" onclick="document.getElementById('restoreFile').click()">اختيار Backup</button><input id="restoreFile" type="file" accept=".json,application/json" hidden onchange="restoreData(event)"></div>
+      <div class="card"><h3>إعادة التصفير</h3><p class="hint">حذف المواد والجرد من هذا المتصفح والبدء من جديد.</p><button class="btn bad" onclick="resetAll()">تصفير البرنامج</button></div>
+    </div>
+    <div class="notice info" style="margin-top:13px">النسخة الحالية تعمل كتطبيق PWA مستقل بعد النشر عبر HTTPS، ويمكن تغليف نفس النسخة لاحقًا كـ APK دون تغيير واجهة الجرد أو البيانات.</div>
+  </section>
+
+  <div class="footer">AL BASIL • BM Inventory • Purchase-price valuation</div>
+</main>
+</div>
+
+<div id="calculatorOverlay" class="calc-overlay" onclick="if(event.target===this)closeCalculator()" aria-hidden="true">
+  <div class="calc-box" role="dialog" aria-modal="true" aria-labelledby="calcTitle">
+    <div class="calc-head">
+      <div class="calc-title"><div class="calc-mini-logo">BM</div><div id="calcTitle">آلة AL BASIL الحاسبة</div></div>
+      <button class="calc-close" type="button" onclick="closeCalculator()" aria-label="إغلاق">×</button>
+    </div>
+    <div class="calc-screen-wrap">
+      <div id="calcOperation" class="calc-op"></div>
+      <input id="calcDisplay" class="calc-screen" value="0" readonly inputmode="decimal" aria-label="شاشة الآلة الحاسبة">
+    </div>
+    <div class="calc-grid">
+      <button class="calc-key clear wide" type="button" onclick="calcClear()">مسح C</button>
+      <button class="calc-key" type="button" onclick="calcBackspace()">⌫</button>
+      <button class="calc-key op" type="button" onclick="calcOperator('/')">÷</button>
+      <button class="calc-key" type="button" onclick="calcDigit('7')">7</button>
+      <button class="calc-key" type="button" onclick="calcDigit('8')">8</button>
+      <button class="calc-key" type="button" onclick="calcDigit('9')">9</button>
+      <button class="calc-key op" type="button" onclick="calcOperator('*')">×</button>
+      <button class="calc-key" type="button" onclick="calcDigit('4')">4</button>
+      <button class="calc-key" type="button" onclick="calcDigit('5')">5</button>
+      <button class="calc-key" type="button" onclick="calcDigit('6')">6</button>
+      <button class="calc-key op" type="button" onclick="calcOperator('-')">−</button>
+      <button class="calc-key" type="button" onclick="calcDigit('1')">1</button>
+      <button class="calc-key" type="button" onclick="calcDigit('2')">2</button>
+      <button class="calc-key" type="button" onclick="calcDigit('3')">3</button>
+      <button class="calc-key op" type="button" onclick="calcOperator('+')">+</button>
+      <button class="calc-key wide" type="button" onclick="calcDigit('0')">0</button>
+      <button class="calc-key" type="button" onclick="calcDigit('.')">.</button>
+      <button class="calc-key eq" type="button" onclick="calcEquals()">=</button>
+    </div>
+    <div class="calc-hint">للجمع والطرح والضرب والقسمة فقط — يمكن استخدام لوحة مفاتيح الكمبيوتر أيضًا.</div>
+  </div>
+</div>
+<script>
+'use strict';
+const DBKEY='AL_BASIL_BM_INVENTORY_V3';
+const INITIAL_MATERIALS=[]
+const emptyDB=()=>({version:3,materials:INITIAL_MATERIALS.map(x=>({...x})),counts:[],seq:1,current:{actual:{}},settings:{}});
+let db=loadDB(),editingId=null,pendingImport=[],cameraStream=null,cameraRunning=false,cameraFrame=0,lastCameraCode='',lastCameraAt=0,deferredInstall=null;
+const $=id=>document.getElementById(id);
+const mCode=$('mCode'),mName=$('mName'),mBarcode=$('mBarcode'),mGroup=$('mGroup'),mGroupCode=$('mGroupCode'),mUnit=$('mUnit'),mBook=$('mBook'),mPurchase=$('mPurchase'),mConv2=$('mConv2'),mConv3=$('mConv3');
+const materialSearch=$('materialSearch'),materialsInfo=$('materialsInfo'),materialsTable=$('materialsTable');
+const countNo=$('countNo'),countDate=$('countDate'),countLocation=$('countLocation'),countUser=$('countUser'
