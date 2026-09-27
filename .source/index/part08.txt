@@ -1,0 +1,119 @@
+7px">المعاينة تعرض أول 12 مادة من ${pendingImport.length}.</div>`:''}`}
+function findExisting(item,mode){if(mode==='code')return item.code?db.materials.find(x=>x.code===item.code):null;if(mode==='barcode')return item.barcode?db.materials.find(x=>x.barcode===item.barcode):null;if(item.code){const x=db.materials.find(m=>m.code===item.code);if(x)return x}if(item.barcode){const x=db.materials.find(m=>m.barcode===item.barcode);if(x)return x}return db.materials.find(m=>normalize(m.name)===normalize(item.name))}
+function commitImport(){if(!pendingImport.length)return;if(importMode.value==='replace'){db.materials=[];db.current.actual={}}let added=0,updated=0;for(const item of pendingImport){const old=findExisting(item,matchMode.value);if(old){Object.assign(old,{...item,id:old.id});updated++}else{db.materials.push(item);added++}}pendingImport=[];importBtn.disabled=true;importPreview.innerHTML='';importStatus.textContent=`تم الاستيراد: ${added} مادة جديدة، ${updated} مادة تم تحديثها. سعر الجرد = آخر شراء.`;saveDB();alert('تم اعتماد استيراد المواد')}
+
+async function parseXLSX(buffer){const zip=await readZip(buffer),ssXml=await zipText(zip,'xl/sharedStrings.xml',true),shared=[];if(ssXml){const doc=new DOMParser().parseFromString(ssXml,'application/xml');[...doc.getElementsByTagName('si')].forEach(si=>shared.push(si.textContent||''))}let sheetPath='xl/worksheets/sheet1.xml';const wbXml=await zipText(zip,'xl/workbook.xml',true),relsXml=await zipText(zip,'xl/_rels/workbook.xml.rels',true);if(wbXml&&relsXml){const wb=new DOMParser().parseFromString(wbXml,'application/xml'),rels=new DOMParser().parseFromString(relsXml,'application/xml'),first=wb.getElementsByTagName('sheet')[0];if(first){const rid=first.getAttribute('r:id')||first.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id');const rel=[...rels.getElementsByTagName('Relationship')].find(r=>r.getAttribute('Id')===rid);if(rel){const t=rel.getAttribute('Target');sheetPath='xl/'+t.replace(/^\/?xl\//,'')}}}const xml=await zipText(zip,sheetPath,false),doc=new DOMParser().parseFromString(xml,'application/xml'),rows=[];[...doc.getElementsByTagName('row')].forEach(rowEl=>{const arr=[];[...rowEl.getElementsByTagName('c')].forEach(c=>{const ref=c.getAttribute('r')||'A1',letters=(ref.match(/[A-Z]+/)||['A'])[0],ci=colIndex(letters),t=c.getAttribute('t'),v=c.getElementsByTagName('v')[0]?.textContent??'',value='';if(t==='s')value=shared[Number(v)]??'';else if(t==='inlineStr')value=c.getElementsByTagName('is')[0]?.textContent??'';else value=v;arr[ci]=value});rows.push(arr)});return rows}
+function colIndex(s){let n=0;for(const ch of s)n=n*26+(ch.charCodeAt(0)-64);return n-1}
+async function readZip(buffer){const dv=new DataView(buffer);let eocd=-1;for(let i=dv.byteLength-22;i>=Math.max(0,dv.byteLength-65557);i--){if(dv.getUint32(i,true)===0x06054b50){eocd=i;break}}if(eocd<0)throw new Error('ملف XLSX غير صالح');const count=dv.getUint16(eocd+10,true),cdOff=dv.getUint32(eocd+16,true),files=new Map();let p=cdOff;for(let i=0;i<count;i++){if(dv.getUint32(p,true)!==0x02014b50)break;const method=dv.getUint16(p+10,true),csize=dv.getUint32(p+20,true),usize=dv.getUint32(p+24,true),nlen=dv.getUint16(p+28,true),elen=dv.getUint16(p+30,true),clen=dv.getUint16(p+32,true),loff=dv.getUint32(p+42,true),name=new TextDecoder().decode(new Uint8Array(buffer,p+46,nlen));files.set(name,{method,csize,usize,loff});p+=46+nlen+elen+clen}return {buffer,files}}
+async function zipText(zip,name,optional){const f=zip.files.get(name);if(!f){if(optional)return '';throw new Error('جزء Excel مفقود: '+name)}const dv=new DataView(zip.buffer,f.loff,30),nlen=dv.getUint16(26,true),elen=dv.getUint16(28,true),start=f.loff+30+nlen+elen,src=new Uint8Array(zip.buffer,start,f.csize);let out;if(f.method===0)out=src;else if(f.method===8){if(typeof DecompressionStream==='undefined')throw new Error('المتصفح لا يدعم فك XLSX. استخدم CSV أو Chrome/Edge حديث.');const ds=new DecompressionStream('deflate-raw');out=new Uint8Array(await new Response(new Blob([src]).stream().pipeThrough(ds)).arrayBuffer())}else throw new Error('طريقة ضغط XLSX غير مدعومة');return new TextDecoder('utf-8').decode(out)}
+
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;installBtn.disabled=false});async function installApp(){if(!deferredInstall){alert('خيار التثبيت سيظهر عند تشغيل البرنامج من HTTPS أو بعد نشر نسخة PWA.');return}deferredInstall.prompt();await deferredInstall.userChoice;deferredInstall=null;installBtn.disabled=true}
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
+function refreshAll(){renderMaterials();renderCounting();renderDashboard();renderReport()}
+refreshAll();
+
+// Simple calculator: + - * / only
+let calcCurrent='0';
+let calcStored=null;
+let calcPending=null;
+let calcWaiting=false;
+let calcExpression='';
+
+function calcFmt(n){
+  if(!Number.isFinite(n)) return 'خطأ';
+  const rounded=Math.round((n+Number.EPSILON)*1e10)/1e10;
+  return String(rounded);
+}
+function calcSymbol(op){ return ({'+':'+','-':'−','*':'×','/':'÷'})[op]||''; }
+function calcUpdate(){
+  const d=document.getElementById('calcDisplay');
+  const o=document.getElementById('calcOperation');
+  if(d) d.value=calcCurrent;
+  if(o) o.textContent=calcExpression || ((calcStored!==null&&calcPending)?`${calcFmt(calcStored)} ${calcSymbol(calcPending)}`:'');
+}
+function openCalculator(){
+  const x=document.getElementById('calculatorOverlay');
+  if(!x) return;
+  x.classList.add('open');
+  x.setAttribute('aria-hidden','false');
+  calcUpdate();
+}
+function closeCalculator(){
+  const x=document.getElementById('calculatorOverlay');
+  if(!x) return;
+  x.classList.remove('open');
+  x.setAttribute('aria-hidden','true');
+}
+function calcClear(){
+  calcCurrent='0'; calcStored=null; calcPending=null; calcWaiting=false; calcExpression=''; calcUpdate();
+}
+function calcDigit(v){
+  if(calcCurrent==='خطأ') calcClear();
+  calcExpression='';
+  if(calcWaiting){
+    calcCurrent=(v==='.')?'0.':v;
+    calcWaiting=false;
+  }else if(v==='.'){ 
+    if(!calcCurrent.includes('.')) calcCurrent+='.';
+  }else{
+    calcCurrent=(calcCurrent==='0')?v:calcCurrent+v;
+  }
+  calcUpdate();
+}
+function calcBackspace(){
+  if(calcWaiting || calcCurrent==='خطأ') return;
+  calcExpression='';
+  calcCurrent=calcCurrent.length>1?calcCurrent.slice(0,-1):'0';
+  if(calcCurrent==='' || calcCurrent==='-') calcCurrent='0';
+  calcUpdate();
+}
+function calcCompute(a,b,op){
+  if(op==='+') return a+b;
+  if(op==='-') return a-b;
+  if(op==='*') return a*b;
+  if(op==='/') return b===0?NaN:a/b;
+  return b;
+}
+function calcOperator(op){
+  if(calcCurrent==='خطأ') calcClear();
+  const input=Number(calcCurrent);
+  calcExpression='';
+  if(calcStored===null){
+    calcStored=input;
+  }else if(calcPending && !calcWaiting){
+    const r=calcCompute(calcStored,input,calcPending);
+    if(!Number.isFinite(r)){
+      calcCurrent='خطأ'; calcStored=null; calcPending=null; calcWaiting=true; calcUpdate(); return;
+    }
+    calcStored=r;
+    calcCurrent=calcFmt(r);
+  }
+  calcPending=op;
+  calcWaiting=true;
+  calcUpdate();
+}
+function calcEquals(){
+  if(calcStored===null || !calcPending || calcCurrent==='خطأ') return;
+  const b=Number(calcCurrent);
+  const a=calcStored;
+  const op=calcPending;
+  const r=calcCompute(a,b,op);
+  if(!Number.isFinite(r)){
+    calcCurrent='خطأ';
+    calcExpression=`${calcFmt(a)} ${calcSymbol(op)} ${calcFmt(b)} =`;
+  }else{
+    calcCurrent=calcFmt(r);
+    calcExpression=`${calcFmt(a)} ${calcSymbol(op)} ${calcFmt(b)} =`;
+  }
+  calcStored=null;
+  calcPending=null;
+  calcWaiting=true;
+  calcUpdate();
+}
+
+document.addEventListener('keydown',e=>{
+  const overlay=document.getElementById('calculatorOverlay');
+  if(!overlay || !overlay.classList.contains('open')) return;
+  if(/^\d$/.test(e.key)){ calcDigit(e.key); e.preventDefault(); }
+  else if(e.key==='.' || e.key===','){ calcDigit('.'); e.preventDefault(); }
+  else if(['+','-','*','/'].includes(e.key))
