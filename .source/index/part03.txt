@@ -1,0 +1,87 @@
+<div><h2 style="font-size:18px">تقدم الجرد الحالي</h2><div class="hint" id="progressText">لم يبدأ الجرد.</div></div></div><div class="progress"><div id="progressBar"></div></div></div>
+    <div class="card" style="margin-top:13px"><div class="section-head"><div><h2 style="font-size:18px">أحدث الفروق</h2><div class="hint">آخر جرد محفوظ في البرنامج.</div></div></div><div id="dashTable"></div></div>
+  </section>
+
+  <section id="materials" class="section">
+    <div class="section-head"><div><h2>المواد</h2><div class="hint">الباركود اختياري. المواد التي لا تحمل باركود تظل قابلة للجرد بالاسم أو الكود.</div></div><div class="toolbar"><button class="btn light" onclick="clearMaterialForm()">مادة جديدة</button></div></div>
+    <div class="card" style="margin-bottom:13px">
+      <div class="form-grid">
+        <div class="field"><label>رمز الصنف</label><input id="mCode"></div>
+        <div class="field"><label>اسم الصنف *</label><input id="mName"></div>
+        <div class="field"><label>رمز الباركود (اختياري)</label><input id="mBarcode" inputmode="numeric"></div>
+        <div class="field"><label>اسم المجموعة</label><input id="mGroup"></div>
+        <div class="field"><label>رمز المجموعة</label><input id="mGroupCode"></div>
+        <div class="field"><label>الوحدة</label><input id="mUnit" value="وحدة"></div>
+        <div class="field"><label>الرصيد الدفتري / الكمية</label><input id="mBook" type="number" step="0.001" value="0"></div>
+        <div class="field"><label>آخر شراء (سعر الجرد)</label><input id="mPurchase" type="number" step="0.0001" value="0"></div>
+        <div class="field"><label>عامل تحويل الوحدة الثانية</label><input id="mConv2" type="number" step="0.001" value="1"></div>
+        <div class="field"><label>عامل تحويل الوحدة الثالثة</label><input id="mConv3" type="number" step="0.001" value="1"></div>
+        <div class="field" style="grid-column:span 2;display:flex;align-items:end;gap:8px"><button class="btn primary" style="flex:1" onclick="saveMaterial()">حفظ المادة</button><button class="btn light" onclick="clearMaterialForm()">مسح</button></div>
+      </div>
+    </div>
+    <div class="section-head">
+      <div class="materials-filters">
+        <div class="search"><input id="materialSearch" placeholder="بحث بالاسم أو الكود أو الباركود..." oninput="renderMaterials()"></div>
+        <div class="group-search"><input id="materialGroupSearch" list="materialGroupsList" placeholder="بحث بالمجموعة..." oninput="renderMaterials()"><datalist id="materialGroupsList"></datalist></div>
+        <button class="btn light filter-clear" type="button" onclick="clearMaterialFilters()">إظهار كل المواد</button>
+      </div>
+      <div class="hint" id="materialsInfo"></div>
+    </div>
+    <div id="materialsTable"></div>
+  </section>
+
+  <section id="importer" class="section">
+    <div class="section-head"><div><h2>استيراد المواد</h2><div class="hint">يدعم Excel XLSX وCSV وTXT/TSV. تم ضبط الحقول لتتوافق مع ملف قائمة الأسعار المرسل.</div></div></div>
+    <div class="notice gold"><b>قاعدة التقييم:</b> عمود <b>«اخر شراء / آخر شراء»</b> هو سعر الشراء المعتمد للجرد. عمود <b>سعر الكرتونه</b> لا يدخل في تقييم الجرد.</div>
+    <div class="card">
+      <div class="dropzone" id="dropzone" onclick="document.getElementById('importFile').click()"><b>اختر ملف المواد أو اسحبه هنا</b><span class="hint">.xlsx / .csv / .txt / .tsv — اسم الصنف، رمز الصنف، المجموعة، الوحدة، الكمية، آخر شراء، الباركود...</span></div>
+      <input type="file" id="importFile" accept=".xlsx,.csv,.txt,.tsv,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+      <div class="form-grid" style="margin-top:14px">
+        <div class="field"><label>طريقة الاستيراد</label><select id="importMode"><option value="update">إضافة الجديد + تحديث الموجود</option><option value="replace">حذف المواد الحالية ثم الاستيراد</option></select></div>
+        <div class="field"><label>مطابقة الموجود حسب</label><select id="matchMode"><option value="auto">الكود ثم الباركود ثم الاسم</option><option value="code">رمز الصنف فقط</option><option value="barcode">الباركود فقط</option></select></div>
+        <div class="field" style="display:flex;align-items:end"><button class="btn primary" id="importBtn" onclick="commitImport()" disabled style="width:100%">اعتماد الاستيراد</button></div>
+        <div class="field" style="display:flex;align-items:end"><button class="btn light" onclick="downloadTemplate()" style="width:100%">تنزيل نموذج CSV</button></div>
+      </div>
+      <div id="importStatus" class="hint" style="margin-top:12px">لم يتم اختيار ملف.</div>
+      <div id="importPreview" class="import-preview"></div>
+    </div>
+  </section>
+
+  <section id="exporter" class="section">
+    <div class="section-head"><div><h2>تصدير المواد</h2><div class="hint">تصدير دليل المواد أو نتيجة الجرد أو نسخة احتياطية كاملة.</div></div></div>
+    <div class="export-cards">
+      <div class="card export-card"><div class="mini-logo">BM</div><h3>المواد CSV</h3><p>ملف خفيف ومتوافق مع Excel ويحتوي سعر آخر شراء والباركود وعوامل التحويل.</p><button class="btn primary" onclick="exportMaterialsCSV()">تصدير CSV</button></div>
+      <div class="card export-card"><div class="mini-logo">BM</div><h3>المواد Excel</h3><p>ملف Excel بصيغة .xls يفتح مباشرة في Excel مع أعمدة دليل المواد.</p><button class="btn blue" onclick="exportMaterialsXLS()">تصدير Excel</button></div>
+      <div class="card export-card"><div class="mini-logo">BM</div><h3>آخر جرد</h3><p>تصدير تفاصيل آخر جرد: الدفتري، الفعلي، الفرق، وسعر آخر شراء وقيمة الفرق.</p><button class="btn good" onclick="exportLastCount()">تصدير الجرد</button></div>
+      <div class="card export-card"><div class="mini-logo">BM</div><h3>نسخة احتياطية</h3><p>حفظ كل البيانات والجرد بصيغة JSON لاستعادتها لاحقًا على نفس الجهاز أو جهاز آخر.</p><button class="btn dark" onclick="backupData()">تنزيل Backup</button></div>
+    </div>
+  </section>
+
+  <section id="counting" class="section">
+    <div class="section-head"><div><h2>جرد المواد</h2><div class="hint">اختر طريقة الجرد المناسبة. لن تظهر إلا أدوات الطريقة التي تختارها.</div></div><div class="toolbar"><button class="btn warn" onclick="fillBookAsActual()">نسخ الدفتري للفعلـي</button><button class="btn light" onclick="clearCurrentCount()">مسح الجرد الحالي</button><button class="btn good" onclick="saveCountSession()">حفظ الجرد</button></div></div>
+
+    <div class="card" style="margin-bottom:13px">
+      <div class="form-grid">
+        <div class="field"><label>رقم الجرد</label><input id="countNo" readonly></div>
+        <div class="field"><label>التاريخ</label><input id="countDate" type="date"></div>
+        <div class="field"><label>المخزن / الفرع</label><input id="countLocation" placeholder="المخزن الرئيسي"></div>
+        <div class="field"><label>القائم بالجرد</label><input id="countUser"></div>
+      </div>
+    </div>
+
+    <div class="count-choice-note"><b>اختر طريقة الجرد</b> — يمكنك التبديل بينها في أي وقت داخل نفس الجرد دون فقد الكميات المسجلة.</div>
+    <div class="count-methods" id="countMethodSelector">
+      <button type="button" class="count-method-btn" id="methodManualBtn" onclick="selectCountMethod('manual')">
+        <span class="count-method-check">✓</span><span class="count-method-icon">✍</span>
+        <span class="count-method-text"><b>جرد يدوي</b><span>بحث بالاسم أو الكود وإدخال الكمية يدويًا. مناسب للأصناف بدون باركود.</span></span>
+      </button>
+      <button type="button" class="count-method-btn" id="methodScanBtn" onclick="selectCountMethod('scan')">
+        <span class="count-method-check">✓</span><span class="count-method-icon">▥</span>
+        <span class="count-method-text"><b>جرد بالباركود / الموبايل</b><span>استخدم قارئ USB/Bluetooth أو كاميرا الهاتف داخل نفس شاشة الجرد.</span></span>
+      </button>
+    </div>
+
+    <div id="countModeManual" class="count-mode-panel">
+      <div class="card count-mode-card">
+        <div class="section-head">
+          <div class="count-mode-heading"><span class="round-icon">✍</span><div>
