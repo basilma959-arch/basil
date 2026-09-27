@@ -31,8 +31,18 @@ function selectCountMethod(method){
   });
   const summary=document.getElementById('countSummaryShell');
   if(summary)summary.classList.add('active');
-  if(method==='manual'&&cameraRunning)stopCamera();
-  if(method==='manual')setTimeout(()=>document.getElementById('countSearch')?.focus(),60);
+  const cameraCard=document.getElementById('cameraScanner');
+  if(cameraCard){
+    const slot=document.getElementById(method==='manual'?'manualCameraSlot':'scanCameraSlot');
+    if(slot&&cameraCard.parentElement!==slot)slot.appendChild(cameraCard);
+  }
+  if(method==='manual'){
+    syncPhoneScanQty();
+    setTimeout(async()=>{
+      document.getElementById('countSearch')?.focus();
+      if(!cameraRunning)await startCamera();
+    },120);
+  }
   if(method==='scan'){syncPhoneScanQty();setTimeout(()=>document.getElementById('barcodeScan')?.focus(),60)}
   renderCounting();
   updateCountSummary();
@@ -42,7 +52,7 @@ function syncPhoneScanQty(){
   if(p&&s)s.value=p.value||1;
 }
 function focusCurrentCountMethod(){
-  if(countMethod==='manual')document.getElementById('countSearch')?.focus();
+  if(countMethod==='manual'){document.getElementById('countSearch')?.focus();if(!cameraRunning)startCamera();}
   else if(countMethod==='scan')document.getElementById('barcodeScan')?.focus();
 }
 document.querySelectorAll('.nav button[data-section]').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.nav button[data-section]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));document.getElementById(btn.dataset.section).classList.add('active');document.getElementById('pageTitle').textContent=btn.textContent.trim();if(btn.dataset.section!=='counting'&&cameraRunning)stopCamera();refreshAll();if(btn.dataset.section==='counting')setTimeout(()=>focusCurrentCountMethod(),80)}));

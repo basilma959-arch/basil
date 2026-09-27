@@ -73,7 +73,7 @@
     <div class="count-methods" id="countMethodSelector">
       <button type="button" class="count-method-btn" id="methodManualBtn" onclick="selectCountMethod('manual')">
         <span class="count-method-check">✓</span><span class="count-method-icon">✍</span>
-        <span class="count-method-text"><b>جرد يدوي</b><span>بحث بالاسم أو الكود وإدخال الكمية يدويًا. مناسب للأصناف بدون باركود.</span></span>
+        <span class="count-method-text"><b>جرد يدوي</b><span>بحث وإدخال يدوي مع تشغيل كاميرا الموبايل تلقائيًا كماسح باركود.</span></span>
       </button>
       <button type="button" class="count-method-btn" id="methodScanBtn" onclick="selectCountMethod('scan')">
         <span class="count-method-check">✓</span><span class="count-method-icon">▥</span>
@@ -84,4 +84,4 @@
     <div id="countModeManual" class="count-mode-panel">
       <div class="card count-mode-card">
         <div class="section-head">
-          <div class="count-mode-heading"><span class="round-icon">✍</span><div>
+          <div class="count-mode-heading"><span class="round-icon">✍</span><div><

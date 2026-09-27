@@ -1,6 +1,7 @@
-h2 style="font-size:17px">الجرد اليدوي</h2><div class="hint">ابحث بالاسم أو الكود أو الباركود ثم أدخل الكمية الفعلية.</div></div></div>
+h2 style="font-size:17px">الجرد اليدوي</h2><div class="hint">ابحث وأدخل الكمية يدويًا، والكاميرا تعمل تلقائيًا لمسح الباركود في نفس الجلسة.</div></div></div>
           <div class="search"><input id="countSearch" placeholder="ابحث عن مادة..." oninput="renderCounting()"></div>
         </div>
+        <div id="manualCameraSlot"></div>
         <div id="countingTable"></div>
       </div>
     </div>
@@ -14,6 +15,7 @@ h2 style="font-size:17px">الجرد اليدوي</h2><div class="hint">ابحث
         </div>
       </div>
 
+      <div id="scanCameraSlot"></div>
       <div class="card count-mode-card phone-mode" id="cameraScanner" style="margin-top:13px">
         <div class="section-head"><div class="count-mode-heading"><span class="round-icon">▣</span><div><h2 style="font-size:17px">كاميرا الموبايل</h2><div class="hint">شغّل الكاميرا الخلفية لمسح نفس باركود الأصناف وإضافته مباشرة إلى الجرد الحالي.</div></div></div><div class="toolbar"><button class="btn primary" id="cameraBtn" onclick="toggleCamera()">تشغيل الكاميرا</button></div></div>
         <div class="field" style="max-width:180px;margin-bottom:10px"><label>الكمية لكل قراءة بالكاميرا</label><input class="scan-qty" id="phoneScanQty" type="number" min="0.001" step="0.001" value="1" oninput="syncPhoneScanQty()"></div>
