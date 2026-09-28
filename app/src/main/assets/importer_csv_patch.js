@@ -67,10 +67,23 @@
     return rows;
   }
 
+  function setSelectedFileName(name){
+    const el=document.getElementById('selectedImportFileName');
+    if(!el) return;
+    if(name){
+      el.style.display='block';
+      el.innerHTML='<b>الملف المختار:</b> '+String(name).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }else{
+      el.style.display='none';
+      el.textContent='';
+    }
+  }
+
   async function loadImportFileFixed(file){
     pendingImport=[];
     importBtn.disabled=true;
     importPreview.innerHTML='';
+    setSelectedFileName(file&&file.name?file.name:'');
     importStatus.textContent='جاري قراءة '+file.name+' ...';
     try{
       let matrix;
@@ -103,7 +116,49 @@
     }
   }
 
+  function installImporterUX(){
+    const section=document.getElementById('importer');
+    const fileInput=document.getElementById('importFile');
+    const drop=document.getElementById('dropzone');
+    if(!section||!fileInput||!drop||document.getElementById('chooseImportFileBtn')) return;
+
+    const choose=document.createElement('button');
+    choose.type='button';
+    choose.id='chooseImportFileBtn';
+    choose.innerHTML='<span style="font-size:22px">⇧</span><span><b style="display:block;font-size:16px">اختيار ملف CSV / Excel للاستيراد</b><small style="display:block;margin-top:3px;opacity:.86">اضغط هنا لاختيار الملف من الهاتف</small></span>';
+    choose.style.cssText='width:100%;min-height:70px;margin:0 0 12px;border:0;border-radius:13px;padding:12px 16px;background:linear-gradient(135deg,#0f766e,#1457b8);color:#fff;font-family:Tahoma,Arial;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:0 8px 20px rgba(15,118,110,.20);cursor:pointer';
+    choose.addEventListener('click',()=>fileInput.click());
+
+    const selected=document.createElement('div');
+    selected.id='selectedImportFileName';
+    selected.style.cssText='display:none;margin:0 0 12px;padding:10px 12px;border:1px solid #9fd7d1;border-radius:9px;background:#ecfdf5;color:#0f5f59;font-size:12px';
+
+    drop.parentNode.insertBefore(choose,drop);
+    drop.parentNode.insertBefore(selected,drop);
+    drop.innerHTML='<b>أو اضغط داخل هذه المساحة لاختيار الملف</b><span class="hint">CSV / XLSX / TXT / TSV</span>';
+
+    const templateBtn=Array.from(section.querySelectorAll('button')).find(b=>String(b.getAttribute('onclick')||'').includes('downloadTemplate'));
+    if(templateBtn){
+      templateBtn.textContent='تنزيل نموذج CSV – اختياري';
+      templateBtn.style.background='#eef2f6';
+      templateBtn.style.color='#475569';
+      templateBtn.style.border='1px solid #d7dee8';
+      templateBtn.style.fontWeight='700';
+    }
+
+    const status=document.getElementById('importStatus');
+    if(status && status.textContent.trim()==='لم يتم اختيار ملف.'){
+      status.textContent='ابدأ بالضغط على زر «اختيار ملف CSV / Excel للاستيراد» بالأعلى.';
+    }
+  }
+
   // Replace the original importer while preserving the rest of AL BASIL logic.
   loadImportFile=loadImportFileFixed;
   window.loadImportFile=loadImportFileFixed;
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',installImporterUX,{once:true});
+  }else{
+    installImporterUX();
+  }
 })();
