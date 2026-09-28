@@ -23,6 +23,11 @@ import android.widget.Toast;
 
 import androidx.webkit.WebViewAssetLoader;
 
+import com.google.zxing.integration.android.IntentIntegrator;
+import com.google.zxing.integration.android.IntentResult;
+
+import org.json.JSONObject;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
@@ -97,12 +102,44 @@ public class MainActivity extends Activity {
             }
         });
 
-        webView.addJavascriptInterface(new FileBridge(), "AndroidBridge");
+        webView.addJavascriptInterface(new AppBridge(), "AndroidBridge");
         webView.loadUrl("https://appassets.androidplatform.net/assets/index.html");
+    }
+
+    private void launchNativeScanner() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.CAMERA}, CAMERA_REQUEST);
+            Toast.makeText(this, "اسمح باستخدام الكاميرا ثم اضغط مسح الباركود مرة أخرى", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        IntentIntegrator integrator = new IntentIntegrator(this);
+        integrator.setDesiredBarcodeFormats(IntentIntegrator.ALL_CODE_TYPES);
+        integrator.setPrompt("وجّه الكاميرا إلى باركود الصنف");
+        integrator.setCameraId(0);
+        integrator.setBeepEnabled(true);
+        integrator.setBarcodeImageEnabled(false);
+        integrator.setOrientationLocked(false);
+        integrator.initiateScan();
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        IntentResult scanResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
+        if (scanResult != null) {
+            if (webView != null) {
+                if (scanResult.getContents() != null) {
+                    String js = "window.onNativeBarcodeScanned && window.onNativeBarcodeScanned(" +
+                            JSONObject.quote(scanResult.getContents()) + ");";
+                    webView.evaluateJavascript(js, null);
+                } else {
+                    webView.evaluateJavascript("window.onNativeBarcodeCancelled && window.onNativeBarcodeCancelled();", null);
+                }
+            }
+            return;
+        }
+
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == FILE_CHOOSER_REQUEST && filePathCallback != null) {
             Uri[] result = null;
@@ -116,11 +153,27 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (webView != null && webView.canGoBack()) webView.goBack();
-        else super.onBackPressed();
+        if (webView != null) {
+            webView.evaluateJavascript(
+                    "(function(){if(window.alBasilShowPage){var active=document.querySelector('.base-page.active,.section.active');if(active&&active.id!=='dashboard'){window.alBasilShowPage('dashboard','الرئيسية');return 'handled';}}return 'no';})()",
+                    value -> {
+                        if (!"\"handled\"".equals(value)) {
+                            if (webView.canGoBack()) webView.goBack();
+                            else MainActivity.super.onBackPressed();
+                        }
+                    }
+            );
+        } else {
+            super.onBackPressed();
+        }
     }
 
-    public class FileBridge {
+    public class AppBridge {
+        @JavascriptInterface
+        public void scanBarcode() {
+            runOnUiThread(MainActivity.this::launchNativeScanner);
+        }
+
         @JavascriptInterface
         public void saveTextFile(String name, String content, String mime) {
             runOnUiThread(() -> {
