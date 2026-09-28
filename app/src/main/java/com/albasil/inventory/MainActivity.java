@@ -9,6 +9,8 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.provider.MediaStore;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
@@ -124,12 +126,26 @@ public class MainActivity extends Activity {
         integrator.initiateScan();
     }
 
+    private void vibrateScanSuccess() {
+        try {
+            Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+            if (vibrator == null || !vibrator.hasVibrator()) return;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(90, VibrationEffect.DEFAULT_AMPLITUDE));
+            } else {
+                vibrator.vibrate(90);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         IntentResult scanResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
         if (scanResult != null) {
             if (webView != null) {
                 if (scanResult.getContents() != null) {
+                    vibrateScanSuccess();
                     String js = "window.onNativeBarcodeScanned && window.onNativeBarcodeScanned(" +
                             JSONObject.quote(scanResult.getContents()) + ");";
                     webView.evaluateJavascript(js, null);
