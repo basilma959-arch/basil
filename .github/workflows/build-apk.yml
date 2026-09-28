@@ -26,7 +26,7 @@ jobs:
           from pathlib import Path
           p=Path('app/src/main/assets/index.html')
           s=p.read_text(encoding='utf-8')
-          tags=['<script src="ui_patch.js"></script>','<script src="ui_redesign_v2.js"></script>']
+          tags=['<script src="ui_patch.js"></script>','<script src="ui_base_style.js"></script>']
           for tag in tags:
               if tag not in s:
                   s=s.replace('</body>', tag+'\n</body>')
@@ -34,7 +34,9 @@ jobs:
           PY
           test -s app/src/main/assets/index.html
           grep -q 'ui_patch.js' app/src/main/assets/index.html
-          grep -q 'ui_redesign_v2.js' app/src/main/assets/index.html
+          grep -q 'ui_base_style.js' app/src/main/assets/index.html
+          node --check app/src/main/assets/ui_patch.js
+          node --check app/src/main/assets/ui_base_style.js
 
       - name: Java 17
         uses: actions/setup-java@v5
