@@ -94,11 +94,9 @@ public class MainActivity extends Activity {
                 filePathCallback = callback;
                 Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
+                // Some Android file managers report CSV with non-standard MIME types.
+                // Accept any file here and validate the extension inside AL BASIL.
                 intent.setType("*/*");
-                intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
-                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        "text/csv", "text/plain", "application/pdf"
-                });
                 startActivityForResult(intent, FILE_CHOOSER_REQUEST);
                 return true;
             }
