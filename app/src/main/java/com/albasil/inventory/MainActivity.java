@@ -92,12 +92,38 @@ public class MainActivity extends Activity {
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> callback, FileChooserParams params) {
                 if (filePathCallback != null) filePathCallback.onReceiveValue(null);
                 filePathCallback = callback;
+
                 Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
-                // Some Android file managers report CSV with non-standard MIME types.
-                // Accept any file here and validate the extension inside AL BASIL.
-                intent.setType("*/*");
-                startActivityForResult(intent, FILE_CHOOSER_REQUEST);
+
+                // Force Android's document picker toward spreadsheet/document files,
+                // instead of opening Gallery/Photos. The phone does NOT need Excel installed;
+                // it only needs to select the XLSX/CSV file from Downloads or Files.
+                intent.setType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        "text/csv",
+                        "application/csv",
+                        "text/comma-separated-values",
+                        "text/tab-separated-values",
+                        "text/plain",
+                        "application/octet-stream"
+                });
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                    intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+                }
+
+                try {
+                    startActivityForResult(intent, FILE_CHOOSER_REQUEST);
+                } catch (Exception e) {
+                    // Fallback for unusual Android builds: still use the system Documents picker.
+                    Intent fallback = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                    fallback.addCategory(Intent.CATEGORY_OPENABLE);
+                    fallback.setType("application/octet-stream");
+                    fallback.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    startActivityForResult(fallback, FILE_CHOOSER_REQUEST);
+                }
                 return true;
             }
         });
