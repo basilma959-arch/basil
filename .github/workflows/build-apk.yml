@@ -29,7 +29,8 @@ jobs:
           tags=[
               '<script src="ui_patch.js"></script>',
               '<script src="ui_base_style.js"></script>',
-              '<script src="camera_native_patch.js"></script>'
+              '<script src="camera_native_patch.js"></script>',
+              '<script src="importer_csv_patch.js"></script>'
           ]
           for tag in tags:
               s=s.replace(tag,'')
@@ -48,9 +49,11 @@ jobs:
           grep -q 'ui_patch.js' app/src/main/assets/index.html
           grep -q 'ui_base_style.js' app/src/main/assets/index.html
           grep -q 'camera_native_patch.js' app/src/main/assets/index.html
+          grep -q 'importer_csv_patch.js' app/src/main/assets/index.html
           node --check app/src/main/assets/ui_patch.js
           node --check app/src/main/assets/ui_base_style.js
           node --check app/src/main/assets/camera_native_patch.js
+          node --check app/src/main/assets/importer_csv_patch.js
 
       - name: Java 17
         uses: actions/setup-java@v5
