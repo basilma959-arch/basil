@@ -1,9 +1,7 @@
-name: Build AL BASIL APK
+name: Build AL BASIL APK (Legacy)
 
 on:
   workflow_dispatch:
-  push:
-    branches: ["main"]
 
 permissions:
   contents: read
