@@ -1,0 +1,71 @@
+name: AL BASIL BM Data Tools
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/al_basil_bm/**'
+      - '.github/workflows/al-basil-bm-data-tools.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-converters:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install openpyxl
+
+      - name: Create sample XLSX
+        run: |
+          python - <<'PY'
+          from openpyxl import Workbook
+          wb=Workbook(); ws=wb.active; ws.title='لائحة أسعار الأصناف'
+          ws.append(['اسم الصنف','رمز الصنف','اسم المجموعة','رمز المجموعة','الوحدة','الكمية','اخر شراء','رمز الباركود','عامل تحويل الوحدة الثانية','عامل تحويل الوحدة الثالثة'])
+          ws.append(['مادة اختبار','T001','اختبار','G01','وحدة',5,12.5,'6220000000000',12,1])
+          wb.save('sample.xlsx')
+          PY
+
+      - name: Convert XLSX to Ameen XML
+        run: python tools/al_basil_bm/excel_to_ameen_xml.py sample.xlsx sample.xml
+
+      - name: Convert Ameen XML back to XLSX
+        run: python tools/al_basil_bm/ameen_xml_to_excel.py sample.xml roundtrip.xlsx
+
+      - name: Validate round trip
+        run: |
+          python - <<'PY'
+          from openpyxl import load_workbook
+          from xml.etree import ElementTree as ET
+          root=ET.parse('sample.xml').getroot()
+          mats=root.findall('.//M')
+          assert len(mats)==1, len(mats)
+          assert mats[0].findtext('MatCode')=='T001'
+          assert mats[0].findtext('MatBarCode')=='6220000000000'
+          assert float(mats[0].findtext('PurchasePrice'))==12.5
+          wb=load_workbook('roundtrip.xlsx',data_only=True)
+          ws=wb[wb.sheetnames[0]]
+          row=list(ws.iter_rows(min_row=2,max_row=2,values_only=True))[0]
+          assert row[0]=='مادة اختبار'
+          assert row[1]=='T001'
+          assert row[6]==12.5
+          assert row[7]=='6220000000000'
+          print('AL BASIL BM import/export round-trip OK')
+          PY
+
+      - name: Upload test outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: AL_BASIL_BM_IMPORT_EXPORT_TEST
+          path: |
+            sample.xml
+            roundtrip.xlsx
