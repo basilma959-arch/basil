@@ -53,6 +53,16 @@ new = '''    private void startScanner() {
                         .setPositiveButton("حسنًا", null)
                         .show();
             }
+        } else if (requestCode == REQ_STORAGE_XML) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                showIndexedXmlFiles();
+            } else {
+                new AlertDialog.Builder(this)
+                        .setTitle("صلاحية الملفات مطلوبة")
+                        .setMessage("يلزم السماح بالوصول إلى الملفات حتى تظهر ملفات XML داخل قائمة الاستيراد.")
+                        .setPositiveButton("حسنًا", null)
+                        .show();
+            }
         }
     }
 '''
@@ -62,4 +72,4 @@ if old not in s:
 
 s = s.replace(old, new, 1)
 p.write_text(s, encoding='utf-8')
-print('Patched camera scanner flow')
+print('Patched camera scanner and permission flow')
