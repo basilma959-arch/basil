@@ -19,10 +19,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Patch AL BASIL XML folder import
-        run: python3 scripts/patch_xml_folder_import.py
+      - name: Patch indexed XML import list
+        run: python3 scripts/patch_xml_index_import.py
 
-      - name: Patch native camera scanner flow
+      - name: Patch embedded camera scanner flow
         run: python3 tools/patch_camera.py
 
       - name: Java 17
