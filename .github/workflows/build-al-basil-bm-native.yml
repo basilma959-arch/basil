@@ -19,6 +19,40 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Patch Android document picker for XML visibility
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('app/src/main/java/com/albasil/inventory/MainActivity.java')
+          s = p.read_text(encoding='utf-8')
+          start = s.index('    private void chooseXml() {')
+          end = s.index('    private void confirmDeleteMaterials()', start)
+          new_method = '''    private void chooseXml() {
+              // Do not filter by MIME type here. Many Android file providers label XML
+              // as text/plain or application/octet-stream and would otherwise hide it.
+              // Showing all documents matches Al-Ameen's picker behavior; the app parses
+              // and validates the selected file as XML after selection.
+              Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+              i.addCategory(Intent.CATEGORY_OPENABLE);
+              i.setType("*/*");
+              i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+              i.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+              try {
+                  startActivityForResult(i, REQ_IMPORT_XML);
+              } catch (Exception e) {
+                  Intent fallback = new Intent(Intent.ACTION_GET_CONTENT);
+                  fallback.addCategory(Intent.CATEGORY_OPENABLE);
+                  fallback.setType("*/*");
+                  fallback.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                  startActivityForResult(Intent.createChooser(fallback, "اختر ملف XML"), REQ_IMPORT_XML);
+              }
+          }
+
+'''
+          p.write_text(s[:start] + new_method + s[end:], encoding='utf-8')
+          PY
+
       - name: Java 17
         uses: actions/setup-java@v5
         with:
