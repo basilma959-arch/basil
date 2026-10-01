@@ -22,6 +22,9 @@ jobs:
       - name: Patch Android document picker for XML visibility
         run: python3 scripts/patch_xml_picker.py
 
+      - name: Patch simple Ameen XML import
+        run: python3 scripts/patch_simple_ameen_xml_import.py
+
       - name: Patch native camera scanner flow
         run: python3 tools/patch_camera.py
 
