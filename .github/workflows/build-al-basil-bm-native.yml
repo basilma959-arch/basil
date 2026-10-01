@@ -22,6 +22,9 @@ jobs:
       - name: Patch Android document picker for XML visibility
         run: python3 scripts/patch_xml_picker.py
 
+      - name: Patch native camera scanner flow
+        run: python3 tools/patch_camera.py
+
       - name: Java 17
         uses: actions/setup-java@v5
         with:
