@@ -25,6 +25,9 @@ jobs:
       - name: Patch SpreadsheetML import fallback
         run: python3 scripts/patch_spreadsheetml_import.py
 
+      - name: Patch import preview and duplicates
+        run: python3 scripts/patch_import_preview_duplicates.py
+
       - name: Patch manual inventory item
         run: python3 scripts/patch_manual_item.py
 
