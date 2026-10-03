@@ -22,6 +22,9 @@ jobs:
       - name: Patch indexed XML import list
         run: python3 scripts/patch_xml_index_import.py
 
+      - name: Patch SpreadsheetML import fallback
+        run: python3 scripts/patch_spreadsheetml_import.py
+
       - name: Patch manual inventory item
         run: python3 scripts/patch_manual_item.py
 
