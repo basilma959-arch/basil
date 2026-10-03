@@ -34,6 +34,9 @@ jobs:
       - name: Fix manual item JSON loader
         run: python3 scripts/patch_manual_item_compile_fix.py
 
+      - name: Patch manual item management
+        run: python3 scripts/patch_manual_item_management.py
+
       - name: Patch embedded camera scanner flow
         run: python3 tools/patch_camera.py
 
