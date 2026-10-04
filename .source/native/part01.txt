@@ -1,0 +1,79 @@
+package com.albasil.bm;
+
+import android.app.*;
+import android.content.*;
+import android.database.Cursor;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.net.Uri;
+import android.os.Bundle;
+import android.provider.OpenableColumns;
+import android.text.Editable;
+import android.text.InputType;
+import android.text.TextWatcher;
+import android.view.*;
+import android.widget.*;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.zxing.integration.android.IntentIntegrator;
+import com.google.zxing.integration.android.IntentResult;
+
+import org.json.*;
+import org.w3c.dom.*;
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+public class MainActivity extends AppCompatActivity {
+    static final int NAVY=Color.rgb(14,24,43), BLUE=Color.rgb(35,93,155), PINK=Color.rgb(205,78,123), GOLD=Color.rgb(207,164,73), CARD=Color.rgb(244,247,251), GREEN=Color.rgb(24,128,91), RED=Color.rgb(178,58,58);
+    static final int REQ_IMPORT=1101, REQ_EXPORT=1102;
+    SharedPreferences prefs;
+    final List<MaterialItem> materials=new ArrayList<>();
+    final List<InventorySession> inventories=new ArrayList<>();
+    LinearLayout root;
+    InventorySession currentInventory, pendingExport;
+    String reportMode="all";
+    List<MaterialItem> pendingImport=new ArrayList<>();
+    String pendingImportType="", pendingImportName="";
+
+    @Override public void onCreate(Bundle b){ super.onCreate(b); prefs=getSharedPreferences("albasil_bm_native",MODE_PRIVATE); loadData(); showHome(); }
+
+    int dp(int x){ return Math.round(x*getResources().getDisplayMetrics().density); }
+    TextView tv(String s,int sp,int color,boolean bold){ TextView v=new TextView(this);v.setText(s);v.setTextSize(sp);v.setTextColor(color);v.setPadding(dp(10),dp(8),dp(10),dp(8));v.setGravity(Gravity.RIGHT);if(bold)v.setTypeface(Typeface.DEFAULT,Typeface.BOLD);return v; }
+    Button btn(String s,int color){ Button b=new Button(this);b.setText(s);b.setTextColor(Color.WHITE);b.setBackgroundColor(color);b.setAllCaps(false);return b; }
+    EditText input(String hint){ EditText e=new EditText(this);e.setHint(hint);e.setSingleLine(true);e.setPadding(dp(12),dp(7),dp(12),dp(7));return e; }
+    void toast(String s){Toast.makeText(this,s,Toast.LENGTH_SHORT).show();}
+    void base(String title, Runnable back){
+        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(Color.rgb(245,247,250));root.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        LinearLayout bar=new LinearLayout(this);bar.setOrientation(LinearLayout.HORIZONTAL);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(dp(10),dp(8),dp(10),dp(8));bar.setBackgroundColor(NAVY);
+        TextView t=tv(title,22,Color.WHITE,true);bar.addView(t,new LinearLayout.LayoutParams(0,dp(58),1));
+        if(back!=null){Button b=btn("← عودة",BLUE);b.setOnClickListener(v->back.run());bar.addView(b,new LinearLayout.LayoutParams(dp(100),dp(50)));}
+        root.addView(bar);
+        ScrollView sv=new ScrollView(this);LinearLayout body=new LinearLayout(this);body.setId(777001);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(14),dp(14),dp(14),dp(24));sv.addView(body);root.addView(sv,new LinearLayout.LayoutParams(-1,0,1));setContentView(root);
+    }
+    LinearLayout body(){return findViewById(777001);}
+    void addGap(LinearLayout p,int h){Space s=new Space(this);p.addView(s,new LinearLayout.LayoutParams(1,dp(h)));}
+    TextView section(String s){TextView t=tv(s,19,NAVY,true);t.setBackgroundColor(Color.rgb(232,239,248));return t;}
+
+    void showHome(){
+        currentInventory=null;reportMode="all";base("الباسل BM | إدارة الجرد",null);LinearLayout b=body();
+        TextView hero=tv("BM\nAL BASIL",30,Color.WHITE,true);hero.setGravity(Gravity.CENTER);hero.setBackgroundColor(NAVY);b.addView(hero,new LinearLayout.LayoutParams(-1,dp(120)));addGap(b,12);
+        LinearLayout stats=new LinearLayout(this);stats.setOrientation(LinearLayout.HORIZONTAL);
+        TextView m=tv("المواد\n"+materials.size(),18,NAVY,true);m.setGravity(Gravity.CENTER);m.setBackgroundColor(Color.WHITE);stats.addView(m,new LinearLayout.LayoutParams(0,dp(82),1));
+        TextView i=tv("الجردات\n"+inventories.size(),18,NAVY,true);i.setGravity(Gravity.CENTER);i.setBackgroundColor(Color.WHITE);stats.addView(i,new LinearLayout.LayoutParams(0,dp(82),1));b.addView(stats);addGap(b,14);
+        Button bm=btn("المواد والاستيراد",BLUE);bm.setOnClickListener(v->showMaterials());b.addView(bm,new LinearLayout.LayoutParams(-1,dp(58)));addGap(b,9);
+        Button bi=btn("الجردات",GREEN);bi.setOnClickListener(v->showInventories());b.addView(bi,new LinearLayout.LayoutParams(-1,dp(58)));addGap(b,9);
+        Button bn=btn("+ جردة جديدة",PINK);bn.setOnClickListener(v->createInventory());b.addView(bn,new LinearLayout.LayoutParams(-1,dp(58)));addGap(b,9);
+        Button about=btn("حول التطبيق",NAVY);about.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("AL BASIL BM").setMessage("نسخة إعادة بناء آمنة فوق البيانات الأصلية.\n\nتشمل: XML وSpreadsheetML، المعاينة، معالجة المكرر، المواد اليدوية، البحث والفلترة، أدوات الكمية، التقارير، الاعتماد والقفل.").setPositiveButton("حسنًا",null).show());b.addView(about,new LinearLayout.LayoutParams(-1,dp(54)));
+    }
+
+    void showMaterials(){
+        base("المواد",this::showHome);LinearLayout b=body();
+        LinearLayout actions=new LinearLayout(this);actions.setOrientation(LinearLayout.HORIZONTAL);
+        Button imp=btn("استيراد XML",BLUE);imp.setOnClickListener(v->pickXml());actions.addView(imp,new LinearLayout.LayoutParams(0,dp(52),1));
+        Button searchXml=btn("البحث عن XML",GREEN);searchXml.setOnClickListener(v->pickXml());actions.addView(searchXml,new LinearLayout.LayoutParams(0,dp(52),1));
+        Button del=btn("حذف المواد",RED);del.setOnClickListener(v->confirmDeleteMaterials());actions.addView(del,new LinearLayout.LayoutParams(0,dp(52),1));b.addView(actions);addGap(b,10);
